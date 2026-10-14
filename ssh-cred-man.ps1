@@ -203,7 +203,7 @@ function Connect-ToServer {
                 $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
                     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($storedCred.Password)
                 )
-                & $plink -ssh -P $port -pw $plainPass -batch "$($Connection.User)@$($Connection.Host)"
+                & $plink -ssh -P $port -pw $plainPass "$($Connection.User)@$($Connection.Host)"
                 Write-Log "plink exited with code $LASTEXITCODE"
             }
             else {
