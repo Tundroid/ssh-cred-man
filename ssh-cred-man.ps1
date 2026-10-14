@@ -218,6 +218,22 @@ function Connect-ToServer {
                     }
                     $hostKeyArgs = @("-hostkey", $fp)
                 }
+                # Enable ANSI/VT processing so remote terminal colors render
+                try {
+                    if (-not ("Native.ConsoleVT" -as [type])) {
+                        Add-Type -Namespace Native -Name ConsoleVT -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetStdHandle(int n);
+[DllImport("kernel32.dll")] public static extern bool GetConsoleMode(IntPtr h, out uint m);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleMode(IntPtr h, uint m);
+'@
+                    }
+                    $h = [Native.ConsoleVT]::GetStdHandle(-11)
+                    $mode = 0
+                    if ([Native.ConsoleVT]::GetConsoleMode($h, [ref]$mode)) {
+                        [void][Native.ConsoleVT]::SetConsoleMode($h, $mode -bor 0x4)
+                    }
+                }
+                catch { Write-Log "Could not enable VT processing: $_" "WARN" }
                 & $plink -ssh -P $port -pw $plainPass @hostKeyArgs $target
                 Write-Log "plink exited with code $LASTEXITCODE"
             }
