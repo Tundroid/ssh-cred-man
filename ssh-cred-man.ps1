@@ -203,7 +203,22 @@ function Connect-ToServer {
                 $plainPass = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
                     [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($storedCred.Password)
                 )
-                & $plink -ssh -P $port -pw $plainPass "$($Connection.User)@$($Connection.Host)"
+                $target = "$($Connection.User)@$($Connection.Host)"
+                $hostKeyArgs = @()
+                # Probe in batch mode: if the host key is not cached, plink prints its fingerprint and aborts
+                $probe = (& $plink -ssh -P $port -batch $target exit 2>&1 | Out-String)
+                if ($probe -match "not cached") {
+                    $fp = [regex]::Match($probe, '(?m)^\s*ssh-\S+\s+\d+\s+(\S+)\s*$').Groups[1].Value
+                    Write-Host "The server's host key is not cached. Fingerprint:" -ForegroundColor Yellow
+                    Write-Host "  $fp"
+                    $ans = Read-Host "Trust this host and continue? (y/N)"
+                    if ($ans -notmatch '^[yY]') {
+                        Write-Log "Host key rejected by user" "WARN"
+                        return
+                    }
+                    $hostKeyArgs = @("-hostkey", $fp)
+                }
+                & $plink -ssh -P $port -pw $plainPass @hostKeyArgs $target
                 Write-Log "plink exited with code $LASTEXITCODE"
             }
             else {
