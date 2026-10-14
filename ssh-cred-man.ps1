@@ -63,10 +63,22 @@ function Get-Connections {
 
 function Save-Connections {
     param([array]$Connections)
+
     try {
-        $Connections | Export-Csv -Path $CsvPath -NoTypeInformation -Encoding UTF8
-        Write-Log "CSV saved ($($Connections.Count) entries)" "DEBUG"
-    } catch {
+        # Make sure we always have an array (even if empty)
+        $toSave = @($Connections)
+
+        if ($toSave.Count -eq 0) {
+            # Write just the header when the list is empty
+            "ConnName,AuthType,User,Host,Port,KeyPath" | Set-Content -Path $CsvPath -Encoding UTF8
+            Write-Log "CSV saved (0 entries - header only)" "DEBUG"
+        }
+        else {
+            $toSave | Export-Csv -Path $CsvPath -NoTypeInformation -Encoding UTF8
+            Write-Log "CSV saved ($($toSave.Count) entries)" "DEBUG"
+        }
+    }
+    catch {
         Write-Log "Failed to save CSV: $_" "ERROR"
         Pause
     }
